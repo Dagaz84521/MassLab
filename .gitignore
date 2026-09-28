@@ -1,0 +1,23 @@
+# Unreal Engine generated files (also applies to plugins).
+**/Binaries/
+**/DerivedDataCache/
+**/Intermediate/
+**/Saved/
+
+# Unreal Editor per-user content.
+Content/Collections/
+Content/Developers/
+
+# IDE generated files and local settings.
+.vs/
+.idea/
+*.sln
+*.suo
+*.VC.db
+*.VC.opendb
+*.user
+*.sln.DotSettings.user
+
+# OS metadata.
+.DS_Store
+Thumbs.db
