@@ -17,6 +17,8 @@ public:
 	AProjectile();
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	
+	FORCEINLINE void SetInitialLocation(const FVector& Location) { InitialLocation = Location; }
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -26,4 +28,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UStaticMeshComponent> ProjectileMeshComponent;
+	
+	UPROPERTY(EditAnywhere)
+	double MaxDistance = 1000.;
+	
+	UPROPERTY()
+	FVector InitialLocation;
 };

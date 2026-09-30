@@ -50,19 +50,21 @@ void AProjectileSpawner::SpawnAProjectile()
 	{
 		return;
 	}
-
-	const FRotator SpawnRotation(0.0, FMath::FRandRange(0.0, 360.0), 0.0);
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-
-	AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass.Get(), GetActorLocation(), SpawnRotation, SpawnParams);
-	if (!Projectile)
+	double SpawnDegreeIncrement = 360.0 / SpawnNumEveryInterval;
+	for (int i = 0; i < SpawnNumEveryInterval; i++)
 	{
-		return;
-	}
-
-	if (UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>())
-	{
-		Movement->SetVelocityInLocalSpace(FVector(InitialSpeed, 0.0, 0.0));
+		FRotator SpawnRotation(0.0, SpawnDegreeIncrement * i, 0.0);
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass.Get(), GetActorLocation(), SpawnRotation, SpawnParams);
+		if (!Projectile)
+		{
+			return;
+		}
+		if (UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>())
+		{
+			Movement->SetVelocityInLocalSpace(FVector(InitialSpeed, 0.0, 0.0));
+		}
+		Projectile->SetInitialLocation(GetActorLocation());
 	}
 }
