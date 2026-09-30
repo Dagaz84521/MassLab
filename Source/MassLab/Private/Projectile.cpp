@@ -3,7 +3,8 @@
 
 #include "Projectile.h"
 
-#include "Misc/MapErrors.h"
+#include "Components/StaticMeshComponent.h"
+#include "ProjectileSpawnRequest.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -21,7 +22,53 @@ AProjectile::AProjectile()
 void AProjectile::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	if (!bHasSpawnRequest)
+	{
+		InitialLocation = GetActorLocation();
+	}
+}
+
+void AProjectile::InitializeProjectile(const FProjectileSpawnRequest& Request, FProjectileReleaseDelegate ReleaseDelegate)
+{
+	InitialLocation = Request.Transform.GetLocation();
+	InitialVelocity = Request.InitialVelocity;
+	MaxDistance = Request.MaxDistance;
+	OnReleaseRequested = MoveTemp(ReleaseDelegate);
+	bHasSpawnRequest = true;
+
+	// Deferred spawning applies the velocity after component initialization.
+	if (IsActorInitialized())
+	{
+		ApplyInitialVelocity();
+	}
+}
+
+void AProjectile::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if (bHasSpawnRequest)
+	{
+		ApplyInitialVelocity();
+	}
+}
+
+void AProjectile::ApplyInitialVelocity()
+{
+	ProjectileMovementComponent->Velocity = InitialVelocity;
+	ProjectileMovementComponent->UpdateComponentVelocity();
+}
+
+void AProjectile::RequestRelease()
+{
+	if (OnReleaseRequested.IsBound())
+	{
+		OnReleaseRequested.Execute(this);
+	}
+	else
+	{
+		// Projectiles placed directly in a level can still run independently.
+		Destroy();
+	}
 }
 
 // Called every frame
@@ -30,7 +77,7 @@ void AProjectile::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (FVector::Dist(GetActorLocation(), InitialLocation) > MaxDistance)
 	{
-		Destroy();
+		RequestRelease();
 	}
 }
 

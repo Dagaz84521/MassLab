@@ -4,7 +4,8 @@
 #include "ProjectileSpawner.h"
 #include "Projectile.h"
 #include "Engine/World.h"
-#include "GameFramework/ProjectileMovementComponent.h"
+#include "ProjectileSpawnRequest.h"
+#include "ProjectileSubsystem.h"
 // Sets default values
 AProjectileSpawner::AProjectileSpawner()
 {
@@ -30,6 +31,11 @@ void AProjectileSpawner::Tick(float DeltaTime)
 
 void AProjectileSpawner::TickProjectileSpawning(float DeltaTime)
 {
+	if (!bAutoSpawn)
+	{
+		TimeSinceLastSpawn = 0.0;
+		return;
+	}
 	if (SpawnInterval <= 0.0)
 	{
 		return;
@@ -39,32 +45,39 @@ void AProjectileSpawner::TickProjectileSpawning(float DeltaTime)
 	if (TimeSinceLastSpawn >= SpawnInterval)
 	{
 		TimeSinceLastSpawn = FMath::Fmod(TimeSinceLastSpawn, SpawnInterval);
-		SpawnAProjectile();
+		SpawnProjectiles();
 	}
 }
 
-void AProjectileSpawner::SpawnAProjectile()
+void AProjectileSpawner::SpawnProjectiles()
 {
 	UWorld* World = GetWorld();
-	if (!World || !ProjectileClass)
+	if (!World || !ProjectileClass || SpawnNumEveryInterval <= 0)
 	{
 		return;
 	}
-	double SpawnDegreeIncrement = 360.0 / SpawnNumEveryInterval;
-	for (int i = 0; i < SpawnNumEveryInterval; i++)
+	UProjectileSubsystem* ProjectileSubsystem = World->GetSubsystem<UProjectileSubsystem>();
+	if (!ProjectileSubsystem)
 	{
-		FRotator SpawnRotation(0.0, SpawnDegreeIncrement * i, 0.0);
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.Owner = this;
-		AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass.Get(), GetActorLocation(), SpawnRotation, SpawnParams);
-		if (!Projectile)
-		{
-			return;
-		}
-		if (UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>())
-		{
-			Movement->SetVelocityInLocalSpace(FVector(InitialSpeed, 0.0, 0.0));
-		}
-		Projectile->SetInitialLocation(GetActorLocation());
+		return;
 	}
+
+	FProjectileSpawnConfig Config;
+	Config.ActorClass = ProjectileClass;
+	Config.Owner = this;
+
+	const FVector SpawnLocation = GetActorLocation();
+	const double SpawnDegreeIncrement = 360.0 / SpawnNumEveryInterval;
+	TArray<FProjectileSpawnRequest> Requests;
+	Requests.Reserve(SpawnNumEveryInterval);
+	for (int32 i = 0; i < SpawnNumEveryInterval; ++i)
+	{
+		const FRotator SpawnRotation(0.0, SpawnDegreeIncrement * i, 0.0);
+		FProjectileSpawnRequest& Request = Requests.AddDefaulted_GetRef();
+		Request.Transform = FTransform(SpawnRotation, SpawnLocation);
+		Request.InitialVelocity = SpawnRotation.Vector() * InitialSpeed;
+		Request.MaxDistance = MaxDistance;
+	}
+
+	ProjectileSubsystem->SpawnBatch(Requests, Config);
 }
