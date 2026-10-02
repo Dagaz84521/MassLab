@@ -19,7 +19,13 @@ AProjectileSpawner::AProjectileSpawner()
 void AProjectileSpawner::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	if (PrewarmCount > 0)
+	{
+		if (UProjectileSubsystem* Subsystem = GetWorld()->GetSubsystem<UProjectileSubsystem>())
+		{
+			Subsystem->PrewarmProjectiles(ProjectileClass, PrewarmCount, this);
+		}
+	}
 }
 
 // Called every frame

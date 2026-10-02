@@ -19,6 +19,9 @@ public:
 	void SpawnBatch(TConstArrayView<FProjectileSpawnRequest> Requests, const FProjectileSpawnConfig& Config);
 
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
+	void PrewarmProjectiles(TSubclassOf<AProjectile> ProjectileClass, int32 Count, AActor* Owner = nullptr);
+
+	UFUNCTION(BlueprintCallable, Category = "Projectile")
 	void ResetProjectiles();
 
 	UFUNCTION(BlueprintPure, Category = "Projectile")

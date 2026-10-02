@@ -19,6 +19,8 @@ public:
 
 	virtual void SpawnBatch(TConstArrayView<FProjectileSpawnRequest> Requests, const FProjectileSpawnConfig& Config)
 		PURE_VIRTUAL(UProjectileBackend::SpawnBatch, );
+	// Backends that do not reuse Actors have no preparation work.
+	virtual void Prewarm(int32 Count, const FProjectileSpawnConfig& Config) {}
 	virtual void Reset() PURE_VIRTUAL(UProjectileBackend::Reset, );
 	virtual int32 GetActiveProjectileCount() const PURE_VIRTUAL(UProjectileBackend::GetActiveProjectileCount, return 0;);
 

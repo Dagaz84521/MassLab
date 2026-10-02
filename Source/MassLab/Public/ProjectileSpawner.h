@@ -31,6 +31,10 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
 	TSubclassOf<AProjectile> ProjectileClass;
+
+	// Synchronous preparation in BeginPlay; zero measures cold pool behavior.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile|Pool", meta = (ClampMin = "0"))
+	int32 PrewarmCount = 0;
 	
 	UPROPERTY(EditAnywhere)
 	double SpawnInterval = 2.;

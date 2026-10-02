@@ -3,6 +3,7 @@
 #include "Engine/World.h"
 #include "MassLabExperimentSettings.h"
 #include "ProjectileBackend.h"
+#include "Projectile.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectileSubsystem, Log, All);
 
@@ -43,6 +44,17 @@ void UProjectileSubsystem::ResetProjectiles()
 	if (ActiveBackend)
 	{
 		ActiveBackend->Reset();
+	}
+}
+
+void UProjectileSubsystem::PrewarmProjectiles(TSubclassOf<AProjectile> ProjectileClass, int32 Count, AActor* Owner)
+{
+	if (ActiveBackend && ProjectileClass && Count > 0)
+	{
+		FProjectileSpawnConfig Config;
+		Config.ActorClass = ProjectileClass;
+		Config.Owner = Owner;
+		ActiveBackend->Prewarm(Count, Config);
 	}
 }
 

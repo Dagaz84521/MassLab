@@ -26,6 +26,8 @@ public:
 
 	// The backend positions the Actor; this initializes its launch and release state.
 	void InitializeProjectile(const FProjectileSpawnRequest& Request, FProjectileReleaseDelegate ReleaseDelegate);
+	void ActivateFromPool(const FTransform& SpawnTransform);
+	void DeactivateForPool();
 	double GetMaxDistance() const { return MaxDistance; }
 	
 	FORCEINLINE void SetInitialLocation(const FVector& Location) { InitialLocation = Location; }
@@ -53,4 +55,11 @@ private:
 	FProjectileReleaseDelegate OnReleaseRequested;
 	FVector InitialVelocity = FVector::ZeroVector;
 	bool bHasSpawnRequest = false;
+	bool bInactiveInPool = false;
+	bool bPoolDefaultsCaptured = false;
+	bool bPoolActorTickEnabled = true;
+	bool bPoolCollisionEnabled = true;
+	bool bPoolHiddenInGame = false;
+	FVector PoolRootScale = FVector::OneVector;
+	TArray<TWeakObjectPtr<UActorComponent>> PoolTickingComponents;
 };

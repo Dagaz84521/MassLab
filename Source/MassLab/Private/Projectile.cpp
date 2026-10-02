@@ -5,6 +5,7 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "ProjectileSpawnRequest.h"
+#include "TimerManager.h"
 
 // Sets default values
 AProjectile::AProjectile()
@@ -58,11 +59,84 @@ void AProjectile::ApplyInitialVelocity()
 	ProjectileMovementComponent->UpdateComponentVelocity();
 }
 
+void AProjectile::DeactivateForPool()
+{
+	if (bInactiveInPool)
+	{
+		return;
+	}
+	if (!bPoolDefaultsCaptured)
+	{
+		PoolRootScale = GetActorScale3D();
+		bPoolActorTickEnabled = IsActorTickEnabled();
+		bPoolCollisionEnabled = GetActorEnableCollision();
+		bPoolHiddenInGame = IsHidden();
+		bPoolDefaultsCaptured = true;
+	}
+
+	bInactiveInPool = true;
+	OnReleaseRequested.Unbind();
+	SetActorTickEnabled(false);
+	SetActorEnableCollision(false);
+	SetActorHiddenInGame(true);
+	SetLifeSpan(0.0f);
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+
+	PoolTickingComponents.Reset();
+	TInlineComponentArray<UActorComponent*> Components(this);
+	for (UActorComponent* Component : Components)
+	{
+		if (Component != ProjectileMovementComponent && Component->IsComponentTickEnabled())
+		{
+			PoolTickingComponents.Add(Component);
+		}
+		Component->SetComponentTickEnabled(false);
+	}
+	ProjectileMovementComponent->StopMovementImmediately();
+	ProjectileMovementComponent->Deactivate();
+	ProjectileMovementComponent->SetUpdatedComponent(nullptr);
+	ProjectileMovementComponent->HomingTargetComponent.Reset();
+	InitialVelocity = FVector::ZeroVector;
+}
+
+void AProjectile::ActivateFromPool(const FTransform& SpawnTransform)
+{
+	FTransform Transform = SpawnTransform;
+	Transform.SetScale3D(SpawnTransform.GetScale3D() * PoolRootScale);
+	SetActorTransform(Transform, false, nullptr, ETeleportType::TeleportPhysics);
+	bInactiveInPool = false;
+
+	// StopSimulating clears UpdatedComponent; assigning velocity alone cannot restart it.
+	ProjectileMovementComponent->SetUpdatedComponent(GetRootComponent());
+	ProjectileMovementComponent->ResetInterpolation();
+	ProjectileMovementComponent->bIsSliding = false;
+	ApplyInitialVelocity();
+	for (const TWeakObjectPtr<UActorComponent>& Component : PoolTickingComponents)
+	{
+		if (Component.IsValid())
+		{
+			Component->SetComponentTickEnabled(true);
+		}
+	}
+	PoolTickingComponents.Reset();
+	SetActorTickEnabled(bPoolActorTickEnabled);
+	SetActorHiddenInGame(bPoolHiddenInGame);
+	ProjectileMovementComponent->Activate(true);
+	// Activation callbacks may return this actor to the pool or destroy it.
+	if (!bInactiveInPool && !IsActorBeingDestroyed())
+	{
+		ProjectileMovementComponent->SetComponentTickEnabled(true);
+		SetActorEnableCollision(bPoolCollisionEnabled);
+	}
+}
+
 void AProjectile::RequestRelease()
 {
 	if (OnReleaseRequested.IsBound())
 	{
-		OnReleaseRequested.Execute(this);
+		// Pool release clears the member delegate while this callback is executing.
+		const FProjectileReleaseDelegate ReleaseDelegate = OnReleaseRequested;
+		ReleaseDelegate.Execute(this);
 	}
 	else
 	{
@@ -74,7 +148,15 @@ void AProjectile::RequestRelease()
 // Called every frame
 void AProjectile::Tick(float DeltaTime)
 {
+	if (bInactiveInPool || IsActorBeingDestroyed())
+	{
+		return;
+	}
 	Super::Tick(DeltaTime);
+	if (bInactiveInPool || IsActorBeingDestroyed())
+	{
+		return;
+	}
 	if (FVector::Dist(GetActorLocation(), InitialLocation) > MaxDistance)
 	{
 		RequestRelease();
